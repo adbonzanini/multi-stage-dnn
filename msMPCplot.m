@@ -1,47 +1,53 @@
 %% Initialize workspace
-clear all
+% clear all
 
 % Plot settings
 Fontsize = 15;
 Lwidth = 2;
 
+% Bound |w(1)| <= wb
+wb=1.2;
 
 %% MPC Parameters
 
 % Define cost parameters
 Q = [2, 0; 0, 1];
-R = 1;
+R = 0.5*[1, 0; 0, 1];
 PN = Q;                            % Terminal cost weight
 
-Np = 4;                             % Prediction horizon
+Np = 5;                             % Prediction horizon
 N = 20;                             % Simulation horizon
 
 
 % Initial point
-yi = [2;0];
+y0 = [4;4];
 
 % Uncertainty realizations
-wl = -[1.6;0];
-wu =  [1.6;0];
+wl = -1*[wb;0];
+wu =  1*[wb;0];
 
 
-[yTr,uOptSeq, ssPlot, Y, U] = msMPC(yi, wl, wu, Np, N, Q, R, PN);
-
-
+msMPC
+% [yTr,uOptSeq, ssPlot, Y, U] = msMPC(y0, wl, wu, Np, N, Q, R, PN);
+%%
 figure(1)
 subplot(2,1,1)
 hold on
 plot([0:N], yTr(1,:), 'LineWidth', Lwidth)
 plot([0:N], ssPlot(1,1:end-1), 'k-', 'LineWidth', Lwidth)
-ylim([min(Y.V(:,1)), max(Y.V(:,1))+2])
+plot([0, N], [max(Y.V(:,1)), max(Y.V(:,1))], 'k--')
+plot([0, N], [min(Y.V(:,1)), min(Y.V(:,1))], 'k--')
+ylim([min(Y.V(:,1)-1), max(Y.V(:,1)+2)])
 ylabel('y_1')
 set(gca,'FontSize',Fontsize)
 box on
 subplot(2,1,2)
 hold on
 plot([0:N], yTr(2,:), 'LineWidth', Lwidth)
-plot([0:N], ssPlot(2,1:end-1), 'k--', 'LineWidth', Lwidth)
-ylim([min(Y.V(:,2)), max(Y.V(:,2))])
+plot([0:N], ssPlot(2,1:end-1), 'k-', 'LineWidth', Lwidth)
+plot([0, N], [max(Y.V(:,2)), max(Y.V(:,2))], 'k--')
+plot([0, N], [min(Y.V(:,2)), min(Y.V(:,2))], 'k--')
+ylim([min(Y.V(:,2)-1), max(Y.V(:,2)+1)])
 xlabel('Time Step (k)')
 ylabel('y_2')
 set(gca,'FontSize',Fontsize)

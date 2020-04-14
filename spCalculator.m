@@ -24,16 +24,26 @@ usp = sdpvar(nu,1);
 % Objective function
 objective = (ysp-yspNominal)'*Qs*(ysp-yspNominal);
 
+%{
 constraints =  [xsp==A*xsp+B*usp+dhat;
                 ysp == C*xsp;
                 Ycon.A*ysp<=Ycon.b;
                 Ucon.A*usp<=Ucon.b];
+%}
+
+constraints =  [Aaug*[xsp;usp] == [Bd*dhat;-Haug*Cd*dhat+Haug*yspNominal];
+                ysp == C*xsp;
+                usp(2)==1];
+                
+%                 Ycon.A*ysp<=Ycon.b;
+%                 Ucon.A*usp<=Ucon.b];
 
 
 % Create optimizer object
-ops = sdpsettings('verbose',0);
+ops = sdpsettings('solver','cplex', 'verbose',0);
 sol = optimize(constraints,objective,ops);
 SS = [value(ysp);value(usp)];
+disp(sol)
 
 % Calculate the explicit solution using yalmip
 % solvemp(constraints,objective ,ops,[yspNominal;dhat],[ysp;usp]);

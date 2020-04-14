@@ -1,5 +1,9 @@
 clear all
 
+% Plot settings
+Fontsize = 15;
+Lwidth = 2;
+
 % Get current directory
 directory = pwd;
 
@@ -15,7 +19,7 @@ Dy1ss = 0;
 overwriteData =1;
 
 % Sampling time
-Tsampling = 0.8;
+Tsampling = 1.3;
 
 %Ignore the headers (i.e. start from row 1, column 0)
 
@@ -105,18 +109,91 @@ u2data = data(:,23)-u2ss;
 ydata = [y1data, y2data];
 udata = [u1data, u2data];
 
+% Create dataset
 subIDdata = iddata(ydata, udata, Tsampling);
 Ndata = subIDdata.N;
 
-modelOrder = 2;
+
+% Subspace ID algorithm(s)
+
 % opt = ssestOptions('OutputWeight', [1,0;0,1]);
 % sys = ssest(subIDdata,modelOrder, 'DisturbanceModel', 'none', 'Form', 'canonical', 'Ts',Tsampling);
-sys = n4sid(subIDdata, modelOrder, 'DisturbanceModel', 'none', 'Form', 'canonical', 'Ts',Tsampling);
+% sys = n4sid(subIDdata, modelOrder, 'DisturbanceModel', 'none', 'Form', 'canonical', 'Ts',Tsampling);
 % sys = ssregest(subIDdata,modelOrder, 'DisturbanceModel', 'none','Form', 'canonical', 'Ts',1.3);
 
+%% Compare MSE and Fit Percent for different orders
+disturbanceModel = 1;
+orderVec = 2:9;
+% Initialize vectors to store metrics
+MSE = zeros(size(orderVec'));
+fitPercent = zeros(size(orderVec,1), 2);
+MSEarmax = zeros(size(orderVec'));
+fitPercentarmax = zeros(size(orderVec,1), 2);
+% Intialize counter
+count=1;
+for modelOrder = orderVec
+    % State-space
+    if disturbanceModel==1
+        sys = n4sid(subIDdata, modelOrder, 'Form', 'canonical', 'Ts',Tsampling);
+    else
+        sys = n4sid(subIDdata, modelOrder, 'DisturbanceModel', 'none', 'Form', 'canonical', 'Ts',Tsampling);
+    end
+    MSE(count) = sys.Report.Fit.MSE;
+    fitPercent(count,:) = sys.Report.Fit.FitPercent';
+    
+    % ARMAX
+    NA=modelOrder*[1 0;0 1];
+    NB=modelOrder*[1 1;1 1];
+    NC=modelOrder*[0;0];   
+    NK=[1 1;1 1];
+    mARMAX = armax(subIDdata, [NA, NB, NC, NK]);
+    MSEarmax(count) = sys.Report.Fit.MSE;
+    fitPercentarmax(count,:) = sys.Report.Fit.FitPercent';
+    
+    % Update counter
+    count = count+1;
+end
+disp([MSE, fitPercent])
+disp([MSEarmax, fitPercentarmax])
+%%
+
+figure(2)
+subplot(2,1,1)
+hold on
+plot(orderVec, MSE, 'b-o', 'MarkerSize', 5, 'Linewidth', Lwidth)
+plot(orderVec, MSEarmax, 'r-o', 'MarkerSize', 5, 'Linewidth', Lwidth)
+% legend('State Space', 'ARMAX')
+ylabel('MSE')
+set(gca, 'FontSize', Fontsize)
+box on
+subplot(2,1,2)
+hold on
+plot(orderVec, fitPercent(:,1), 'b-o', 'MarkerSize', 5, 'Linewidth', Lwidth)
+plot(orderVec, fitPercentarmax(:,1), 'r-o', 'MarkerSize', 5, 'Linewidth', Lwidth)
+% legend('State Space', 'ARMAX')
+ylabel('Fit Percent for y_1')
+xlabel('Model Order')
+set(gca, 'FontSize', Fontsize)
+box on
+
+%% Balance small MSE and small order
+modelOrder = 3;
+sys = n4sid(subIDdata, modelOrder, 'Form', 'canonical', 'DisturbanceModel', 'none', 'Ts',Tsampling);
 A = sys.A;
 B = sys.B; 
 C = sys.C; 
+Ke = sys.K;
+
+%% ARMAX Model
+NA=modelOrder*[1 0;0 1];
+NB=modelOrder*[1 1;1 1];
+NC=modelOrder*[0;0];   
+NK=[1 1;1 1];
+mARMAX = armax(subIDdata, [NA, NB, NC, NK]);
+AX = mARMAX.A;
+BX = mARMAX.B;
+CX = mARMAX.C;
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -143,12 +220,21 @@ xlabel('Time Instance')
 legend('Linear Model', 'Experimental Data')
 %}
 
-% opt = compareOptions('InitialCondition',ydata(1,:)');
+
+
+
+
+
+
+
+%%
+% Compare
 opt = compareOptions('InitialCondition',zeros(modelOrder,1));
-figure(2)
-compare(subIDdata, sys, opt)
+figure(3)
+compare(subIDdata, sys, mARMAX)
 xlabel('Time/s')
-legend('Experimental Data', 'Linear Model')
+legend('Experimental Data', 'SS Model', 'ARMAX Model')
+%%
 
 
 %{
@@ -224,7 +310,8 @@ disp(minErrors)
 cd ..
 if overwriteData==1
     if glass ==1
-        save('APPJmodelGlass10s2o', 'A', 'B', 'C', 'steadyStates', 'maxErrors', 'minErrors')
+        save('APPJssGlass', 'A', 'B', 'C', 'Ke', 'steadyStates', 'maxErrors', 'minErrors')
+        save('APPJarmaxGlass', 'AX', 'BX', 'CX', 'steadyStates', 'maxErrors', 'minErrors')
     elseif metal==1
         save('APPJmodelMetal10s2o', 'A', 'B', 'C', 'steadyStates', 'maxErrors', 'minErrors')
     end

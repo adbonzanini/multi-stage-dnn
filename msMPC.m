@@ -1,4 +1,4 @@
-function [yTr,uOptSeq, ssPlot, Y, U] = msMPCfn(y0, wl, wu, Np, N, Q, R, PN)
+% function [yTr,uOptSeq, ssPlot, Y, U] = msMPC(y0, wl, wu, Np, N, Q, R, PN)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Summary: Function that implements a multi-stage MPC strategy
 % y0: initial states
@@ -30,13 +30,15 @@ yi = y0;
 N_robust = 2;                       
 
 %% Load plasma model
-sys = load('APPJmodelGlass10s2o');
+% sys = load('APPJmodelGlass10s2o');
+sys = load('APPJ_NMSS').model;
 
 % Dimensions
 nx=size(sys.A,2);
 nu=size(sys.B,2);
 ny=size(sys.C,1);
 nd=2;
+Nrepeat = nx+ny+nu;
 
 % Discrete uncertainty set
 Wset = [wl, zeros(ny,1), wu];
@@ -45,12 +47,34 @@ Wset = [wl, zeros(ny,1), wu];
 A = sys.A;
 B = sys.B;
 C = sys.C;
+Ew = sys.Ew;
 
+%%
+%%{
+Fmat = []; % Np x Np
+Phimat = []; % Np x (Np-1)
+for j=1:Np
+% Fmat
+Fmat = [Fmat;A^j];
+% Phimat
+    PhiRow = [];
+    for jj = j:-1:1
+        PhiRow = [PhiRow, A^(j-1)*B];
+    end
+    if size(PhiRow,2)>(Np-1)*nu
+        PhiRow = PhiRow(:,1:(Np-1)*nu);
+    end
+
+Phimat = [Phimat; PhiRow, zeros(size(A,1), (Np-1)*nu-size(PhiRow,2))];
+
+end
+%}
+%%
 
 %% Define Constraints
 Y = [eye(2), [5;10]; - eye(2), [5; 6.36] ];
 Y = Polyhedron('H', Y);
-U = [eye(2), [2;2]; -eye(2), [1.5; 1.5]];
+U = [eye(2), [10;10]; -eye(2), [1.5; 1.5]];
 U = Polyhedron('H', U);
 
 
@@ -67,6 +91,8 @@ tChange = 1000;
 ysp2 = [0;0];
 tChange2 = 9999;
 ysp3 = [0;0];
+
+
 
 
 yss = ysp1;
@@ -86,8 +112,8 @@ wNoise = MX.sym('wNoise', ny);
 %% Define dynamics and cost as Casadi functions
 
 % Dynamics and stage cost
-xNext = A*x+B*u+wNoise;
-y = C*x;
+xNext = A*x+B*u + Ew*ss(1:ny);%+vertcat(wNoise, zeros(nx-nd, 1));
+y = C*x+wNoise;
 Lstage = (y-ss(1:ny))'*Q*(y-ss(1:ny)) + (u-ss(ny+1:end))'*R*(u-ss(ny+1:end));
 
 % Functions for nominal vs. real dynamics
@@ -97,8 +123,8 @@ F = Function('F', {x,u,wNoise,ss}, {xNext,Lstage},{'x','u', 'wNoise', 'ss'},{'xN
 %% Offset-free and estimation matrices (if needed)
 
 %Offset-free tracking parameters
-Bd = zeros(nx,nd);
-Cd = eye(ny,nd);
+Bd = zeros(nx,nx);
+Cd = eye(ny,nx);
 Haug = eye(ny,ny);
 Aaug = [eye(size(A))-A, -B; Haug*C, zeros(ny, nu)];
 
@@ -144,6 +170,9 @@ uS = cell(nu, 1);
 for j =1:nu
     uS{j} = zeros(N_scenarios, Np);
 end
+
+Xvec = cell(N_scenarios,1);
+Uvec = cell(N_scenarios,1);
 
 % Initialize vectors to store the predicted inputs and outputs for one OCP loop
 uopt = zeros(nu, Np);
@@ -201,7 +230,15 @@ for k = 1:N
         
         rng(n_sc)
        
-        wReal = [normrnd(1., 0.3, [1,N+1]);normrnd(0., 0.3, [1,N+1])];
+        wReal = [1;0]+0*[normrnd(1., 0.3, [1,N+1]);normrnd(0., 0.3, [1,N+1])];
+        
+        
+        X_NMSS = [];
+        lbX_NMSS = [];
+        ubX_NMSS = [];
+        U_NMSS = [];
+        lbU_NMSS = [];
+        ubU_NMSS = [];
 
         %     "Lift" initial conditions. Note that the initial node
         %     is the same for all scenarios, so the double index is not
@@ -217,6 +254,8 @@ for k = 1:N
         ubw = [ubw;xhati];
         w0 = [w0;zeros(nx,1)];
         discrete =[discrete;zeros(nx,1)];
+ 
+        
         
         Yk = MX.sym(char(join(['Y0','_',string(n_sc)])), ny);
         strMat = [strMat;{char(join(['Y0','_',string(n_sc)]))}];
@@ -246,23 +285,28 @@ for k = 1:N
             ubw = [ubw; max(U.V)'];
             w0  = [w0; zeros(nu,1)];
             discrete =[discrete;zeros(nu,1)];
+            
+            if i<Np
+                U_NMSS = [U_NMSS;Uk];
+                lbU_NMSS = [lbU_NMSS;min(U.V)'];
+                ubU_NMSS = [ubU_NMSS;max(U.V)'];
+            end
            
             
             % Integrate until the end of the interval
             if i<=N_robust
                 wPred = Wset(:,w_idx(i));
-                [Xk_end, Jstage] = F(Xk, Uk, wPred,[yss;uss]);
             else
-                [Xk_end, Jstage] = F(Xk, Uk, [0;0],[yss;uss]);
+                wPred = 0*Wset(:,1);
             end
-                
+            [Xk_end, Jstage] = F(Xk, Uk, wPred,[yss;uss]);
 
             % Yk_end = mtimes(C, Xk_end)+0*YGP
             J=J+w_i(n_sc)*Jstage;
             % Penalize abrupt changes
             %J = J + mtimes(mtimes((Uk-uopt[:,i]).T, RR), Uk-uopt[:,i]) #+ mtimes(mtimes((Yk_end-Yk).T, QQ), Yk_end-Yk) 
             
-            g   = [g;Yk-C*Xk];
+            g   = [g;Yk-C*Xk-wPred];
             lbg = [lbg;zeros(ny,1)];
             ubg = [ubg;zeros(ny,1)];
 
@@ -279,6 +323,10 @@ for k = 1:N
             w0  = [w0;zeros(nx,1)];
             discrete =[discrete;zeros(nx,1)];
             
+            X_NMSS = [X_NMSS;Xk];
+            lbX_NMSS = [lbX_NMSS;-inf*ones(nx,1)];
+            ubX_NMSS = [ubX_NMSS; inf*ones(nx,1)];
+            
             
             
             Yk = MX.sym(char(join(['Y_',string(i+1),'_', string(n_sc)])), ny);
@@ -292,9 +340,17 @@ for k = 1:N
             w0  = [w0;zeros(ny,1)];
             discrete =[discrete;zeros(ny,1)];
             
+            
+            %%%%%%%%%%%%%%%%%%%% Equality Constraints %%%%%%%%%%%%%%%%%%%%
+            
+            %%{
             g   = [g;Xk_end-Xk];
             lbg = [lbg; zeros(nx,1)];
             ubg = [ubg; zeros(nx,1)];
+            %}
+            
+            
+            
             
             %{
             if i==2
@@ -331,10 +387,53 @@ for k = 1:N
         g = [g;Yk-C*Xk];
         lbg = [lbg;zeros(ny,1)];
         ubg = [ubg;zeros(ny,1)];
-      
+        
+        % Equality constraints for NMSS  
+        %{
+        Xvec{n_sc} = X_NMSS;
+        Uvec{n_sc} = U_NMSS;
+            
+
+        g=[g;X_NMSS - Fmat*xki-Phimat*U_NMSS];
+        lbg=[lbg;zeros(size(X_NMSS,1),1)];
+        ubg=[ubg;zeros(size(X_NMSS,1),1)];
+        %}
+        
+        
+
+     
+        
         
     end
+    %% NMSS Constraints
+    %{
+    for ii=N_scenarios
+        for jj=2:Np+1
+            idxStart = (jj-1)*Nrepeat+1;
+            idxStart = idxStart+(ii-1)*((Np+1)*Nrepeat-1)-ii+1;
+
+                fprintf('%s \n', [num2str(idxStart), '-->', strMat{idxStart}]);
+            Xvec{ii} = [Xvec{ii}; w(idxStart:idxStart+nx-1)];
+
+            if jj<=Np
+            Uvec{ii} = [Uvec{ii}; w(idxStart+nx+ny:idxStart+nx+ny+nu-1)];
+            end   
+        end
+
+        g=[g;Xvec{ii} - Fmat*xki-Phimat*Uvec{ii}];
+        lbg=[lbg;zeros(size(Xvec{ii},1),1)];
+        ubg=[ubg;zeros(size(Xvec{ii},1),1)];
+
+    end
     
+    fprintf('\n')
+    for jj=1:n_sc
+       %disp(Xvec{jj})
+       disp(Uvec{jj})
+    end
+    fprintf('\n')
+    %}
+    %%
 
 
 
@@ -369,7 +468,7 @@ for k = 1:N
     end
 
     Nbranch = length(scenario_idx); % branches per node
-    Nrepeat = length(w)/N_scenarios;
+%     Nrepeat = length(w)/N_scenarios;
     %%
     
     % Second split
@@ -414,7 +513,6 @@ for k = 1:N
     
     
     % These only include the first scenario --> first case in scenario mat
-    Nrepeat = nx+ny+nu;
     y1_opt = w_opt(nx+1:Nrepeat:Nrepeat*Np)';
     y2_opt = w_opt(nx+2:Nrepeat:Nrepeat*Np)';
     u1_opt = w_opt(nx+ny+1:Nrepeat:Nrepeat*(Np-1))';
@@ -437,16 +535,38 @@ for k = 1:N
 %     dhat = [Fpred(xki(1));0];
     
 %     dhat = dist;
-    xki = A*xki+B*uopt(:,1)+wReal(:,k);
-    yki = C*xki;
+    modelOrder = size(sys.AX{1},2)-1;
+    yPrev = xki(1:ny, 1);
+    uPrev = uopt(:,1);
+    xkiPrev = xki;
+%     xkiPrev(ny*modelOrder+1:ny*modelOrder+2,1) = uPrev;
+    
+    xki = A*xki+B*uopt(:,1)+Ew*yss; %+[wReal(:,k); zeros(nx-nd,1)];
+    yki = C*xki+wReal;
     
     yTr(1,k+1) =yki(1);
     yTr(2,k+1) =yki(2);
     
     
     % State Feedback
+%     xki(ny+1:end) = xki(1:end-2);
+
+    % xki(k+1) = [y(k+1), ..., u(k), ...,]
+    %{
+    xki(ny+1:end) = xkiPrev(1:end-2);
+    xki(ny*modelOrder+1:ny*modelOrder+2,1) = uPrev;
+    %}
+
+    
+    
+    %{
+    xki(ny+1:ny+ny,1) = yPrev;
+    xki(ny*modelOrder+1:ny*modelOrder+2,1) = uPrev;
+    %}
+    
     xhati = xki;
-   
+%     L = [eye(ny);zeros(nx-ny, ny)];
+%     xhati = A*xki+B*uopt(:,1) + L*(yki-C*xhati);
 
     %
     if k>=0 && k<tChange-1
@@ -457,7 +577,7 @@ for k = 1:N
         yspCase = ysp3;
     end
         
-
+    %{
     % Setpoint calculator 
     dhat = zeros(nx,1);
     sp_opt = spCalculator(yspCase, dhat, Aaug, Bd, Cd, Y, U, Haug, sys);
@@ -466,12 +586,14 @@ for k = 1:N
 %     sp_opt = mpSP([yspCase;dhat]);
     yss = sp_opt(1:2);
     uss = sp_opt(3:end);
-
-%     yss = yspCase;
+    %}
+ 
+    yss = yspCase;
+    uss = B\((eye(size(A))-A)*(C\ysp1));
     ssPlot=[ssPlot, yspCase];    
     
 end
 
 
-end
+% end
 
