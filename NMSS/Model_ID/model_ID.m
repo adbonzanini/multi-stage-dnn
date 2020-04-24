@@ -34,9 +34,9 @@ end
 data = csvread(dataFile,1, 0);
 
 % Column legend (OLD)
-%(1) time,(2) Tset, (3) Ts, (4) Ts2, (5) Ts3, (6) P, (7) Imax, (8) O777,
-%(9) O845, (10) N391, (11) He706, (12) sum_int, (13) V, (14) F, (15) Q, 
-%(16) Dsep, (17) x_pos, (18) y_pos, (19) T_emb, (20) V, (21) P_emb, (22) Prms,
+% (1) time,(2) Tset, (3) Ts, (4) Ts2, (5) Ts3, (6) P, (7) Imax, (8) O777,
+% (9) O845, (10) N391, (11) He706, (12) sum_int, (13) V, (14) F, (15) Q, 
+% (16) Dsep, (17) x_pos, (18) y_pos, (19) T_emb, (20) V, (21) P_emb, (22) Prms,
 % (23) D_c, (24) Rdel, (25) Is, (26) q_o, (27, 28) sig, (29) tm_el
 
 % Column legend (NEW)
