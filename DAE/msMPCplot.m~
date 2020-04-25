@@ -7,9 +7,9 @@ Fontsize = 15;
 Lwidth = 2;
 
 %% User inputs
-adaptTree = 0;  % Scenario tree adaptation
-wb =  0;      % Uncertainty bound
-currentCEM = 0; % Current CEM
+adaptTree = 1;  % Scenario tree adaptation
+wb =  4.1719;      % Uncertainty bound
+currentCEM = 0.4618; % Current CEM
 CEMtarget = 1;  % CEM target
 training = 0;   % Whether to train the GP model or not (has to be trained the first time you run the code)
 
@@ -31,12 +31,12 @@ Q = [1, 0; 0, 1];
 R = 1;
 PN = Q;                             % Terminal cost weight
 
-Np = 5;                             % Prediction horizon
-N = 20;                             % Simulation horizon
+Np = 4;                             % Prediction horizon
+N = 1;                             % Simulation horizon
 
 
 % Initial point
-yi = [4;0];
+yi = [5;2.4618];
 
 
 % Uncertainty bounds
@@ -152,7 +152,7 @@ ylabel('P')
 set(gca,'FontSize',Fontsize)
 box on
 
-uOptSeq
+
 
 %{
 figure(3)

@@ -9,7 +9,6 @@ ubg = args.ubg;
 nx = args.nx;
 ny = args.ny;
 nu = args.nu;
-nw = args.nw;
 nCEM = args.nCEM;
 offset_x0 = args.offset_x0;
 offset_CEM = args.offset_CEM;
@@ -17,8 +16,6 @@ offset_w = args.offset_w;
 offset_mpc = args.offset_mpc;
 offset_end = args.offset_end;
 Np = args.Np;
-N_robust = args.N_robust;
-
 
 
 % Scenarios
@@ -28,46 +25,44 @@ scenario_idx = [-1, 0, 1];     % Multiplier of the additive w(x,u) of the GP in 
 scenario_mat = combvec(scenario_idx, scenario_idx)';
 
 % Update uncertainty bounds
-Wset = [-params(2:3)', zeros(2,1), params(2:3)'];
+Wset = [params(2:3)', zeros(2,1), params(4:5)'];
 
 for n_sc =1:length(scenario_mat)
     sc_vec = scenario_mat(n_sc, :)';
     w_idx = 1-min(min(scenario_mat))+sc_vec;
     
+    Ncurr = (n_sc-1)*(Np*offset_mpc+offset_end)+min(n_sc-1, 1)*offset_CEM;
     
-    Ncurr = (n_sc-1)*(Np*offset_mpc+nCEM+offset_end);
-    
-    % Update initial state for all scenarios
+    % Update initial state
     Ncurr_x0 = Ncurr+offset_x0;
     w0(Ncurr_x0+1:Ncurr_x0+nx) = x;
     lbw(Ncurr_x0+1:Ncurr_x0+nx) = x;
     ubw(Ncurr_x0+1:Ncurr_x0+nx) = x;
 
 
-    % Update initial CEM for all scenarios
+    % Update initial CEM
     Ncurr_cem = Ncurr+offset_CEM;
     w0(Ncurr_cem+1:Ncurr_cem+nCEM) = params(1);
     lbw(Ncurr_cem+1:Ncurr_cem+nCEM) = params(1);
     ubw(Ncurr_cem+1:Ncurr_cem+nCEM) = params(1);
 
-    
-        % Update branches for all scenarios and all steps in robust horizon
+        % Update branches
         for i=1:Np
-        Ncurr_w = Ncurr+offset_w+(i-1)*Np+min(1, i-1)*offset_end;
+        Ncurr_w = Ncurr+offset_w+(i-1)*Np;
         if i<=N_robust
             w0(Ncurr_w+1:Ncurr_w+nw) = [Wset(1,w_idx(i));Wset(2,w_idx(i))];
             lbw(Ncurr_w+1:Ncurr_w+nw) = [Wset(1,w_idx(i));Wset(2,w_idx(i))];
             ubw(Ncurr_w+1:Ncurr_w+nw) = [Wset(1,w_idx(i));Wset(2,w_idx(i))];
-%         else
-%            w0(Ncurr_w+1:Ncurr_w+nw) = zeros(nw,1);
-%            lbw(Ncurr_w+1:Ncurr_w+nw) = zeros(nw,1);
-%            ubw(Ncurr_w+1:Ncurr_w+nw) = zeros(nw,1); 
+        else
+           w0(Ncurr+offset_w+1:Ncurr+offset_w+nw) = zeros(nw,1);
+           lbw(Ncurr+offset_w+1:Ncurr+offset_w+nw) = zeros(nw,1);
+           ubw(Ncurr+offset_w+1:Ncurr+offset_w+nw) = zeros(nw,1); 
         end
     end
- 
+    
+    
+    
 end
-
-
 
 % Solve the nmpc problem
 sol = solver('x0', w0, 'lbx', lbw, 'ubx', ubw, 'lbg', lbg, 'ubg', ubg);
@@ -90,11 +85,5 @@ v_opt = full(sol.f);
 if args.warm_start == 1
     args.w0 = w_opt;
 end
-args.w0 = w0;
-args.lbw = lbw;
-args.ubw=ubw;
-args.lbg=lbg;
-args.ubg=ubg;
-% fprintf('\n')
-% disp([w0(1:112,:), [1:length(w0(1:112,:))]'])
+
 end

@@ -14,9 +14,10 @@ for i = 1:N
     tic
     
     % Call function to solve problem and return data
-    [U_mpc(i,:), Feas(i), V_opt(i), args] = solveOCP(solver, args, X0(i,1:2), X0(i,3));
+    [U_mpc(i,:), Feas(i), V_opt(i), args] = solveOCP(solver, args, X0(i,1:2), X0(i,3:end));
     
     % Print end statement
+    fprintf('\n \n Fesibility %g \n \n', Feas(i))
     fprintf('took %g seconds\n', toc)
 end
 

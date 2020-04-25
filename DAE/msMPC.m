@@ -245,16 +245,6 @@ for k = 1:N
         w0 = [w0; zeros(ny,1)];
         discrete =[discrete; zeros(ny,1)];
         
-        %{
-        CEMvar = MX.sym('CEMcurr', nCEM);
-        strMat = [strMat;{char(join(['CEMvar0','_',string(n_sc)]))}];
-        w = [w;CEMvar];
-        lbw = [lbw; w_i(n_sc)*currentCEM];
-        ubw = [ubw; w_i(n_sc)*currentCEM];
-        w0 = [w0; w_i(n_sc)*currentCEM];
-        discrete =[discrete; zeros(nCEM,1)];
-        %}
-        
         
 
         % Optimal Control Problem - Open Loop Optimization
@@ -413,6 +403,7 @@ for k = 1:N
     Nrepeat = length(w)/N_scenarios;
     %%
     
+    %{
     % Second split
     
     % Group second scenarios based on the first split and then examine each
@@ -435,6 +426,7 @@ for k = 1:N
             ubg = [ubg;zeros(nu,1)];
         end
     end
+    %}
     
     
   

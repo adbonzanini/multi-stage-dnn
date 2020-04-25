@@ -36,11 +36,13 @@ currentCEM = 0; % Current CEM (initial) -- leave at zero
 CEM_min = 0;
 CEM_max = 1.5;
 
-% Uncertainty bounds -- these defines the space from which to draw points [-wb, wb]
+
 wb1 =  5;      
 wb2 =  1;
 wl = -1*[wb1;wb2];
 wu =  1*[wb1;wb2];
+
+
 
 
 

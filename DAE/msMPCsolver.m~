@@ -411,15 +411,20 @@ for jj = 1:N_scenarios
         for kk=2:length(idx_b2{ii})
             g = [g;
                 u1b2_all(idx_b2{ii}(kk-1))-u1b2_all(idx_b2{ii}(kk));
-                u2b2_all(idx_b2{ii}(kk-1))-u2b2_all(idx_b2{ii}(kk))];
+                u2b2_all(idx_b2{ii}(kk-1))-u1b2_all(idx_b2{ii}(kk))];
 
          conCheck1 = [conCheck1;
                      u1b2_all(idx_b2{ii}(kk-1))-u1b2_all(idx_b2{ii}(kk));
-                      u2b2_all(idx_b2{ii}(kk-1))-u2b2_all(idx_b2{ii}(kk))];
+                      u2b2_all(idx_b2{ii}(kk-1))-u1b2_all(idx_b2{ii}(kk))];
         lbg = [lbg;zeros(nu,1)];
         ubg = [ubg;zeros(nu,1)];
         end  
     end
+
+scenario_mat
+conCheck1
+
+
 
 
 
