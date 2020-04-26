@@ -179,7 +179,7 @@ myInput_P = uq_createInput(Input);
 %% Sample within the domain of attraction
 
 % Specify number of samples
-Nsamp = 100;
+Nsamp = 1000;
 
 % Sample the state/reference space
 Psamp = uq_getSample(myInput_P, 10*Nsamp, 'MC');
@@ -199,7 +199,7 @@ target_rand = [U_mpc];
 data = [data_rand];
 target = [target_rand];
 
-%{
+%%{
 %% Test a sample mpc
 Nsim = 20;
 wb=0;
@@ -214,7 +214,7 @@ xki = [xd0(2)*300-273;xa0(1)]-sys.steadyStates(1:2)';
 yplot(:,1) = xki;
 data_rand = [yplot(:,1)', CEMplot(1), wb, 0];
 
-
+%{
 for k=1:Nsim
     [U_mpc, Feas, V_opt] = solveSamplesMPC(solver, args, data_rand);
     

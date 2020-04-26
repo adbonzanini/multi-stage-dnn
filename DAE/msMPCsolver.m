@@ -400,26 +400,29 @@ for jj = 1:N_scenarios
     u1b2_all = [u1b2_all;w(offset_u2+1)];
     u2b2_all = [u2b2_all;w(offset_u2+nu)];
    
-    end
-  % Find branching stages (3 sets of constraints because there are 3 nodes at k=2 (or k=1 in Python))
-    idx_b2{1} = find(scenario_mat(:,1)==-1);
-    idx_b2{2} = find(scenario_mat(:,1)==0);
-    idx_b2{3} = find(scenario_mat(:,1)==1);
-    
+end
 
-    for ii = 1:length(idx_b2)
-        for kk=2:length(idx_b2{ii})
-            g = [g;
-                u1b2_all(idx_b2{ii}(kk-1))-u1b2_all(idx_b2{ii}(kk));
-                u2b2_all(idx_b2{ii}(kk-1))-u2b2_all(idx_b2{ii}(kk))];
+%{
+% Find branching stages (3 sets of constraints because there are 3 nodes at k=2 (or k=1 in Python))
+idx_b2{1} = find(scenario_mat(:,1)==-1);
+idx_b2{2} = find(scenario_mat(:,1)==0);
+idx_b2{3} = find(scenario_mat(:,1)==1);
 
-         conCheck1 = [conCheck1;
-                     u1b2_all(idx_b2{ii}(kk-1))-u1b2_all(idx_b2{ii}(kk));
-                      u2b2_all(idx_b2{ii}(kk-1))-u2b2_all(idx_b2{ii}(kk))];
-        lbg = [lbg;zeros(nu,1)];
-        ubg = [ubg;zeros(nu,1)];
-        end  
-    end
+
+for ii = 1:length(idx_b2)
+    for kk=2:length(idx_b2{ii})
+        g = [g;
+            u1b2_all(idx_b2{ii}(kk-1))-u1b2_all(idx_b2{ii}(kk));
+            u2b2_all(idx_b2{ii}(kk-1))-u2b2_all(idx_b2{ii}(kk))];
+
+     conCheck1 = [conCheck1;
+                 u1b2_all(idx_b2{ii}(kk-1))-u1b2_all(idx_b2{ii}(kk));
+                  u2b2_all(idx_b2{ii}(kk-1))-u2b2_all(idx_b2{ii}(kk))];
+    lbg = [lbg;zeros(nu,1)];
+    ubg = [ubg;zeros(nu,1)];
+    end 
+end
+%}
 
 
 
