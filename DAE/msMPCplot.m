@@ -1,5 +1,5 @@
 %% Initialize workspace
-% clear all
+clear all
 uqlab
 
 % Plot settings
@@ -85,6 +85,8 @@ if training == 1
     GPtraining.Xtest = Xtest;
     GPtraining.Ytest = Ytest;
     GPtraining.lag = lag;
+else
+    load('GPtraining.mat')
 end
 
 

@@ -482,7 +482,7 @@ for k = 1:N
     yki = C*xki;
     %}
     
-    xPred = A*xki+B*uopt(:,1)+0*GP';
+    xPred = A*xki+B*uopt(:,1);
     
     Fsim = plantSimulator(xd0, uopt(:,1)+sys.steadyStates(4:5)', d0, xa0);
     xd0 = full(Fsim.xf);

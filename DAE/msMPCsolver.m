@@ -1,4 +1,4 @@
-function [solver, args, Y, U] = msMPCsolver(yi, sys, currentCEM, CEMtarget, wl, wu, Np, Q, R, PN, GPtraining)
+function [solver, args, Y, U] = msMPCsolver(yi, sys, currentCEM, CEMtarget, wl, wu, Np, Q, R, PN, GPtraining, Kcem)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Summary: Function that implements a multi-stage MPC strategy
 % y0: initial states
@@ -48,12 +48,15 @@ A = sys.A;
 B = sys.B;
 C = sys.C;
 
-% CEM Parameters
-Kcem = 0.75; % if T>=35 oC
+% CEM Parameters given in inputs
+% Kcem = 0.75; % if T>=35 oC
+
 
 
 %% Define Constraints
-Y = [eye(2), [5;8.5]; -eye(2), [10; sys.steadyStates(2)]];
+y1Con = [42.5;30]-sys.steadyStates(1);
+y2Con = [10;0]-sys.steadyStates(2);
+Y = [eye(2), [y1Con(1);y2Con(1)]; -eye(2), [-y1Con(2); -y2Con(2)]];
 Y = Polyhedron('H', Y);
 U = [eye(2), [5;5]; -eye(2), [1.5; 1.5]];
 U = Polyhedron('H', U);

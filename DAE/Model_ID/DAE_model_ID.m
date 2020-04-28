@@ -186,7 +186,7 @@ disp(minErrors)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % SAVE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-cd ..
+
 if overwriteData==1
     save('APPJmodelDAE', 'A', 'B', 'C', 'steadyStates', 'maxErrors', 'minErrors', 'xdata', 'udata', 'xCompare')
     warning('Datasets overwritten!')
