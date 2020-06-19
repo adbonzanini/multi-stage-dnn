@@ -1,4 +1,4 @@
-function myKrigingMat = trainGP(Xtrain, Ytrain, Xtest, Ytest, showFigures)
+function [gprMdl1, gprMdl2, kfcn] = trainGP(Xtrain, Ytrain, Xtest, Ytest, showFigures)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Trains a Gaussian Process (GP) regression model using Xtrain 
 % (Nsamp x Nfeatures) and Ytrain (Nsamp x Noutputs). UQLab is requred!
@@ -9,71 +9,49 @@ function myKrigingMat = trainGP(Xtrain, Ytrain, Xtest, Ytest, showFigures)
 % Last edited: April 17 2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Start uqlab
-% uqlab
+% Define anonymous function of the kernel
+kfcn = @(XN,XM,theta) (exp(theta(2))^2)*exp(-(pdist2(XN,XM).^2)/(2*exp(theta(1))^2))+(1e-2)*eye(size(XN,1), size(XM,1));
 
-% train GP
-MetaOpts.Type = 'Metamodel';
-MetaOpts.Scaling=0;
-MetaOpts.MetaType = 'Kriging';
-MetaOpts.Corr.Family = 'matern-3_2';
-% MetaOpts.Corr.Family = 'Gaussian';
-MetaOpts.Corr.Isotropic = 0;
+theta0 = [1.5,0.2];
 
-MetaOpts.ExpDesign.X = Xtrain;
-MetaOpts.ExpDesign.Y = Ytrain;
-myKrigingMat = uq_createModel(MetaOpts);
+% Train each dimension
+gprMdl1 = fitrgp(Xtrain, Ytrain(:,1),'KernelFunction',kfcn, 'KernelParameters',theta0);
+gprMdl2 = fitrgp(Xtrain, Ytrain(:,2),'KernelFunction',kfcn, 'KernelParameters',theta0);
 
-
-
-% Test Data
-
+%%
 
 if showFigures==1
-    [Ypred,Yvar] = uq_evalModel(myKrigingMat,Xtest);
-    [YpredTr, YvarTr] = uq_evalModel(myKrigingMat,Xtrain);
-    
-    
-    figure(1)
-    % subplot
-    subplot(2,2,1)
-    plot(Ytrain(:,1), 'r.')
+    [ypred1, ypred1SD] = predict(gprMdl1, Xtest);
+    [ypred2, ypred2SD] = predict(gprMdl2, Xtest);
+
+    theta1 = gprMdl1.KernelInformation.KernelParameters;  %(sigmaL, sigmaF)
+    KK = kfcn(Xtrain, Xtrain, theta1);
+    KKs = kfcn(Xtrain, Xtest, theta1);
+    ypred1m = (KKs'/KK)*Ytrain(:,1);
+
+    theta2 = gprMdl2.KernelInformation.KernelParameters;  %(sigmaL, sigmaF)
+    KK = kfcn(Xtrain, Xtrain, theta2);
+    KKs = kfcn(Xtrain, Xtest, theta2);
+    ypred2m = (KKs'/KK)*Ytrain(:,2);
+
+    figure()
+    subplot(2,1,1)
     hold on
-    plot(YpredTr(:,1), 'b--')
-    ylabel('y_1')
-    title('Training Data')
-    set(gca,'FontSize',15)
-    box on
-    % subplot
-    subplot(2,2,2)
-    plot(Ytrain(:,2), 'r.')
-    hold on
-    plot(YpredTr(:,2), 'b--')
+    plot(ypred1)
+    plot(Ytest(:,1), 'k.')
+    plot(ypred1m)
+    subplot(2,1,2)
     ylabel('y_2')
-    title('Training Data')
-    set(gca,'FontSize',15)
-    box on
-    % subplot
-    subplot(2,2,3)
-    plot(Ytest(:,1), 'r.')
     hold on
-    plot(Ypred(:,1), 'b--')
-    xlabel('Time index')
-    ylabel('y_1')
-    title('Test Data')
-    set(gca,'FontSize',15)
-    box on
-    % subplot
-    subplot(2,2,4)
-    plot(Ytest(:,2), 'r.')
-    hold on
-    plot(Ypred(:,2), 'b--')
-    xlabel('Time index')
+    plot(ypred2)
+    plot(Ytest(:,2), 'k.')
+    plot(ypred2m)
     ylabel('y_2')
-    title('Test Data')
-    set(gca,'FontSize',15)
-    box on
+    xlabel('Discrete Time')
 end
+
+
+
 
 end
 

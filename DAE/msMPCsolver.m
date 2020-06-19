@@ -1,4 +1,4 @@
-function [solver, args, Y, U] = msMPCsolver(yi, sys, currentCEM, CEMtarget, wl, wu, Np, Q, R, PN, GPtraining, Kcem)
+function [solver, args, Y, U] = msMPCsolver(yi, sys, currentCEM, CEMtarget, wl, wu, Np, Q, R, PN, GPtraining, Kcem, GPinPredictionIdx)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Summary: Function that implements a multi-stage MPC strategy
 % y0: initial states
@@ -62,10 +62,13 @@ U = [eye(2), [5;5]; -eye(2), [1.5; 1.5]];
 U = Polyhedron('H', U);
 
 %% Unpack the GP training object
-myKrigingMat = GPtraining.myKrigingMat;
+gprMdl1 = GPtraining.gprMdl1;
+gprMdl2 = GPtraining.gprMdl2;
+kfcn = GPtraining.kfcn; % "custom" SE kernel (for prediction within the OCP)
+Xtrain = GPtraining.Xtrain;
+Ytrain = GPtraining.Ytrain;
 Xtest = GPtraining.Xtest;
 lag = GPtraining.lag;
-[GP, ~] = uq_evalModel(myKrigingMat, Xtest);
 
 
 %%
@@ -255,7 +258,27 @@ for n_sc =1:length(scenario_mat)
         end
         w = [w;wPred];
         % Change bounds depending on robust horizon
-        if i<=N_robust
+        if i<=N_robust-GPinPredictionIdx
+            lbw = [lbw; Wset(1,w_idx(i));Wset(2,w_idx(i))];
+            ubw = [ubw; Wset(1,w_idx(i));Wset(2,w_idx(i))];
+            w0 = [w0; Wset(1,w_idx(i));Wset(2,w_idx(i))];
+            discrete =[discrete; zeros(nw,1)]; 
+            
+        elseif i>1 && i<=N_robust
+            % Update test dataset
+            XtestPred = [(Xk-xki)', Uk'];
+            
+            theta1 = gprMdl1.KernelInformation.KernelParameters;  %(sigmaL, sigmaF)
+            KK = kfcn(Xtrain, Xtrain, theta1);
+            KKs = kfcn(Xtrain, Xtest, theta1);
+            KKss = kfcn(Xtest, Xtest, theta1);
+            covGP1 = KKss - (KKs'/KK)*KKs;
+            wGP1 = (KKs'/KK)*Ytrain(:,1)+3*sqrt(covGP1);
+            
+            %wGP2 = predict(gprMdl2, XtestPred); %Not needed since we only care about scenarios in x1
+            Wset = [-[wGP1;0], zeros(ny,1), [wGP1;0]];
+            
+            % Update bounds
             lbw = [lbw; Wset(1,w_idx(i));Wset(2,w_idx(i))];
             ubw = [ubw; Wset(1,w_idx(i));Wset(2,w_idx(i))];
             w0 = [w0; Wset(1,w_idx(i));Wset(2,w_idx(i))];
@@ -266,7 +289,7 @@ for n_sc =1:length(scenario_mat)
             w0 = [w0; zeros(nw, 1)];
             discrete =[discrete; zeros(nw,1)];
         end
-            [Xk_end, ~] = F(Xk, Uk, 0*GP'+wPred,[yss;uss]);
+            [Xk_end, ~] = F(Xk, Uk, wPred,[yss;uss]);
             Jstage = Lfn(Xk, wPred);
         
 
