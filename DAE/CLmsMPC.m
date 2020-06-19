@@ -5,7 +5,8 @@
 % Set user inputs under "User inputs" line
 %
 % Written by: Angelo D. Bonzanini
-% Last edited: April 27 2020
+% Written: April 27 2020
+% Last edited: June 19 2020
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % File located in /users/adbonzanini/Box\ Sync/Berkeley/Research/CACE2020/multi-stage-dnn/DAE
