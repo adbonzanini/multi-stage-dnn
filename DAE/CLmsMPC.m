@@ -136,6 +136,7 @@ yplot = zeros(ny,Nsim+1);
 uplot = zeros(nu,Nsim);
 GPstore = zeros(ny, Nsim+1);
 sdGPstore = zeros(ny, Nsim+1);
+TimeVec = zeros(Nsim+1,1);
 
 % Calculate initial steady-state
 [xd0, xa0, d0, uss] = DAEssCalc(yi(1)+sys.steadyStates(1),4, 0);
@@ -149,10 +150,11 @@ wReal = [normrnd(0, sdNoise, [1, Nsim]); normrnd(0, 0.2, [1, Nsim])];
 
 %% MPC Loop
 for k=1:Nsim
-
-    [U_mpc, Feas, V_opt] = solveSamplesMPC(solver, args, dataIn);
-    uplot(:, k) = U_mpc';
+    tic
+    [U_mpc, Feas, V_opt, U_mpc1] = solveSamplesMPC(solver, args, dataIn);
     
+    uplot(:, k) = U_mpc';
+
     xPred = A*xki+B*U_mpc';
     
     Fsim = plantSimulator(xd0, U_mpc'+sys.steadyStates(4:5)', d0, xa0);
@@ -176,11 +178,10 @@ for k=1:Nsim
     CEMplot(k+1) = CEMplot(k)+ addCEM;
     currentCEM = CEMplot(k+1);
     
-    
     % Update test dataset
     Xtest(1,1:end-ny) = Xtest(1,ny+1:end);
     Xtest(1,end-ny+1:end) = (xPred - xki)';
-    Xtest(1,(lag-1)*nu+1:lag*nu) = U_mpc(:,1)';
+    Xtest(1,(lag-1)*nu+1:lag*nu) = U_mpc1; % Use u_{1|k}^* for GP!
     [GP1, sdGP1] = predict(gprMdl1, Xtest);
     [GP2, sdGP2] = predict(gprMdl2, Xtest);
     GP = [GP1;GP2]; sdGP = [sdGP1;sdGP2];
@@ -193,7 +194,8 @@ for k=1:Nsim
     end
   
     dataIn = [yki',currentCEM, wb, 0];
-
+    
+    TimeVec(k) = toc;
 end
 
 
@@ -242,16 +244,22 @@ set(gca, 'Fontsize', Fontsize)
 subplot(3,1,1)
 title('(a)')
 subplot(3,1,2)
-title('(b)')
+title('(b)') 
 subplot(3,1,3)
 title('(c)')
+
+disp('Average GP prediction')
+disp(mean(GPstore,2))
+disp('Average Time Per Iteration')
+disp(mean(TimeVec))
+
 
 %{
 legend([h{2}, h{3}, h{4}], 'msNMPC', 'A-msNMPC', 'LB-msNMPC')
 %}
 
-disp('Average GP prediction')
-disp(mean(GPstore,2))
+% 0.23, 0.17, 0.18
+
 
 
 

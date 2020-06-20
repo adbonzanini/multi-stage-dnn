@@ -246,7 +246,7 @@ for n_sc =1:length(scenario_mat)
         w   = [w;Uk];
         lbw = [lbw; min(U.V)'];
         ubw = [ubw; max(U.V)'];
-        w0  = [w0; zeros(nu,1)];
+        w0  = [w0; 0.09*ones(nu,1)];
         discrete =[discrete;zeros(nu,1)];
 
         

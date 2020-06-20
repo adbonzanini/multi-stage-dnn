@@ -1,4 +1,4 @@
-function [u_mpc, feas, v_opt, args] = solveOCP(solver, args, x, params)
+function [u_mpc, feas, v_opt, args, u_mpc1] = solveOCP(solver, args, x, params)
 
 % Extract arguments
 w0 = args.w0;
@@ -16,6 +16,7 @@ offset_CEM = args.offset_CEM;
 offset_w = args.offset_w;
 offset_mpc = args.offset_mpc;
 offset_end = args.offset_end;
+%offset_scenario = args.offset_scenario;
 Np = args.Np;
 N_robust = args.N_robust;
 
@@ -67,13 +68,14 @@ for n_sc =1:length(scenario_mat)
  
 end
 
-
-
 % Solve the nmpc problem
 sol = solver('x0', w0, 'lbx', lbw, 'ubx', ubw, 'lbg', lbg, 'ubg', ubg);
 % Extract optimal solution
 w_opt = full(sol.x);
+
+
 u_mpc = w_opt(nx+nCEM+ny+1:nx+nCEM+ny+nu);
+u_mpc1 = w_opt(offset_mpc+nx+nCEM+ny+1:offset_mpc+nx+nCEM+ny+nu);
 
 % Check feasibility
 ipopt_stats = solver.stats();
