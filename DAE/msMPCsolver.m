@@ -274,7 +274,7 @@ for n_sc =1:length(scenario_mat)
             KKs = kfcn(Xtrain, Xtest, theta1);
             KKss = kfcn(Xtest, Xtest, theta1);
             covGP1 = KKss - (KKs'/KK)*KKs;
-            wGP1 = (KKs'/KK)*Ytrain(:,1)+3*sqrt(covGP1)+0*0.4; % 2*0.4 is the 2*st.dev. (95% confidence interval) of the external noise, need to code it as a variable
+            wGP1 = (KKs'/KK)*Ytrain(:,1)+3*sqrt(covGP1);
             
             %wGP2 = predict(gprMdl2, XtestPred); %Not needed since we only care about scenarios in x1
             Wset = [-[wGP1;0], zeros(ny,1), [wGP1;0]];
