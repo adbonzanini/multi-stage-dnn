@@ -148,6 +148,17 @@ dataIn = [yplot(:,1)', CEMplot(1), wb, 0];
 rng(3)
 wReal = [normrnd(0, sdNoise, [1, Nsim]); normrnd(0, 0.2, [1, Nsim])];
 
+%Uncomment here
+%{
+% Update test dataset
+Xtest(1,1:end-ny) = Xtest(1,ny+1:end);
+Xtest(1,end-ny+1:end) = zeros(1,2);
+Xtest(1,(lag-1)*nu+1:lag*nu) = zeros(1,2); 
+[GP1, sdGP1] = predict(gprMdl1, Xtest);
+[GP2, sdGP2] = predict(gprMdl2, Xtest);
+GP = [GP1;GP2]; sdGP = [sdGP1;sdGP2];
+%}
+
 %% MPC Loop
 for k=1:Nsim
     tic
@@ -163,6 +174,7 @@ for k=1:Nsim
    
 
     xki = [xd0(2)*300-273;xa0(1)]-sys.steadyStates(1:2)';
+    % xki  = A*xki+B*U_mpc'+ GP; % Uncomment here
     %xki = A*xki+B*U_mpc';
     yki = xki+wReal(:,k);
     yplot(:, k+1) = yki;
