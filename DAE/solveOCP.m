@@ -1,4 +1,4 @@
-function [u_mpc, feas, v_opt, args, u_mpc1] = solveOCP(solver, args, x, params)
+function [u_mpc, feas, v_opt, args, u_mpc1 ,updateFlag] = solveOCP(solver, args, x, params)
 
 % Extract arguments
 w0 = args.w0;
@@ -53,18 +53,23 @@ for n_sc =1:length(scenario_mat)
 
     
         % Update branches for all scenarios and all steps in robust horizon
-        for i=1:Np
-        Ncurr_w = Ncurr+offset_w+(i-1)*Np+min(1, i-1)*offset_end;
-        if i<=N_robust
-            w0(Ncurr_w+1:Ncurr_w+nw) = [Wset(1,w_idx(i));Wset(2,w_idx(i))];
-            lbw(Ncurr_w+1:Ncurr_w+nw) = [Wset(1,w_idx(i));Wset(2,w_idx(i))];
-            ubw(Ncurr_w+1:Ncurr_w+nw) = [Wset(1,w_idx(i));Wset(2,w_idx(i))];
-%         else
-%            w0(Ncurr_w+1:Ncurr_w+nw) = zeros(nw,1);
-%            lbw(Ncurr_w+1:Ncurr_w+nw) = zeros(nw,1);
-%            ubw(Ncurr_w+1:Ncurr_w+nw) = zeros(nw,1); 
+        updateFlag=0;
+        if params(2)> 0
+            for i=1:Np
+            Ncurr_w = Ncurr+offset_w+(i-1)*Np+min(1, i-1)*offset_end;
+                if i<=N_robust
+                    w0(Ncurr_w+1:Ncurr_w+nw) = [Wset(1,w_idx(i));Wset(2,w_idx(i))];
+                    lbw(Ncurr_w+1:Ncurr_w+nw) = [Wset(1,w_idx(i));Wset(2,w_idx(i))];
+                    ubw(Ncurr_w+1:Ncurr_w+nw) = [Wset(1,w_idx(i));Wset(2,w_idx(i))];
+        %         else
+        %            w0(Ncurr_w+1:Ncurr_w+nw) = zeros(nw,1);
+        %            lbw(Ncurr_w+1:Ncurr_w+nw) = zeros(nw,1);
+        %            ubw(Ncurr_w+1:Ncurr_w+nw) = zeros(nw,1); 
+                end
+            end
+            updateFlag=1;
+
         end
-    end
  
 end
 

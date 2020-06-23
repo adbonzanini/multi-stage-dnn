@@ -25,7 +25,7 @@ sys = load('Model_ID/APPJmodelDAE');
 load('Supporting-Data-Files/DNN_training.mat')
 
 %% User inputs
-caseidx = 4;    % 1 = nominal; 2 = multi-stage; 3 = adaptive multi-stage;
+caseidx = 2;    % 1 = nominal; 2 = multi-stage; 3 = adaptive multi-stage;
 sdNoise = 0.4;  % standard deviation of the random  noise (NOT due to mismatch)
 CEMtarget = 10; % CEM target
 currentCEM = 0; % Initial CEM
@@ -40,8 +40,8 @@ elseif caseidx==2
 elseif caseidx==3
     wb = sys.maxErrors(1)+2*sdNoise; adaptTree=1;
 elseif caseidx == 4
-    wb = sys.maxErrors(1)+2*sdNoise; adaptTree=1; % Start with the same noise bound as in case 3 (nothing changes in this code)
-    GPinPredictionIdx = 1;
+    wb = 0*sys.maxErrors(1)+2*sdNoise; adaptTree=0; % adaptTree = 0 so that extenal bounds are not introduced
+    GPinPredictionIdx = 2;
 else
     error('Invalid case study')
 end
@@ -155,7 +155,7 @@ for k=1:Nsim
     
     uplot(:, k) = U_mpc';
 
-    xPred = A*xki+B*U_mpc';
+    xPred = A*xki+B*U_mpc'; % pass xPred
     
     Fsim = plantSimulator(xd0, U_mpc'+sys.steadyStates(4:5)', d0, xa0);
     xd0 = full(Fsim.xf);
@@ -191,6 +191,8 @@ for k=1:Nsim
     % Update wb through GP
     if adaptTree == 1
         wb(1) = abs(GP(1))+3*sdNoise;  
+    else
+        wb(1) = 0;
     end
   
     dataIn = [yki',currentCEM, wb, 0];
@@ -255,7 +257,7 @@ disp(mean(TimeVec))
 
 
 %{
-legend([h{2}, h{3}, h{4}], 'msNMPC', 'A-msNMPC', 'LB-msNMPC')
+legend([h{2}, h{3}, h{4}], 'msMPC', 'A-msMPC', 'LB-msMPC')
 %}
 
 % 0.23, 0.17, 0.18

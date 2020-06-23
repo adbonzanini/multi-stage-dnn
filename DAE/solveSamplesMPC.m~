@@ -20,7 +20,7 @@ for i = 1:N
     fprintf('\n \n Fesibility %g \n \n', Feas(i))
     fprintf('took %g seconds\n', toc)
     if updateFlag==1
-        warning('Bounds updated through external GP')
+        warning('Bounds updated through exter')
     end
 end
 
