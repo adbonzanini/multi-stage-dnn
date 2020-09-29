@@ -12,7 +12,7 @@ function [gprMdl1, gprMdl2, kfcn] = trainGP(Xtrain, Ytrain, Xtest, Ytest, showFi
 % Define anonymous function of the kernel
 kfcn = @(XN,XM,theta) (exp(theta(2))^2)*exp(-(pdist2(XN,XM).^2)/(2*exp(theta(1))^2))+(1e-2)*eye(size(XN,1), size(XM,1));
 
-theta0 = [1.5,0.2];
+theta0 = [1.5,-2]; %1.5, 0.2
 
 % Train each dimension
 gprMdl1 = fitrgp(Xtrain, Ytrain(:,1),'KernelFunction',kfcn, 'KernelParameters',theta0);

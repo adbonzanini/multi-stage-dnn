@@ -14,28 +14,26 @@ Tsampling = 0.5;
 
 % Load DAE data
 data = load('DAE_data');
-
+% states/outputs
 x1_data = data.xdVec(2,:)*300-273; % Ts in oC
-x2_data = data.xaVec(1,:);         % ip in mA
-x3_data = data.xaVec(3,:);         % Rp in 1e-5 Ohm
+% x2_data = data.xaVec(1,:);         % ip in mA
+x2_data = data.xdVec(1,:)*300-273; %T1 in oC
+% inputs
 u1_data = data.uSequence(1,:);     % P_set in W
 u2_data = data.uSequence(2,:);     % Flow in slm
 
 % Plot the data to visualize it
 figure(1)
-subplot(5, 1, 1)
+subplot(4, 1, 1)
 plot(x1_data)
 ylabel('T_s ( ^\circC)')
-subplot(5, 1, 2)
+subplot(4, 1, 2)
 plot(x2_data)
-ylabel('i_p (mA)')
-subplot(5, 1, 3)
-plot(x3_data)
-ylabel('R_p (\mu\Omega)')
-subplot(5, 1, 4)
+ylabel('T_1 ( ^\circC)')
+subplot(4, 1, 3)
 stairs(u1_data)
 ylabel('Power (W)')
-subplot(5, 1, 5)
+subplot(4, 1, 4)
 stairs(u2_data)
 ylabel('Flow (slm)')
 xlabel('Time Instance')
@@ -48,18 +46,16 @@ xlabel('Time Instance')
 % Translate to the origin
 x1ss = mean(x1_data(1:5));     % Ts
 x2ss = mean(x2_data(1:5));     % ip
-x3ss = mean(x3_data(1:5));     % Rp
 u1ss = mean(u1_data(1:5));     % P
 u2ss = mean(u2_data(1:5));     % q
 
-steadyStates = [x1ss, x2ss, x3ss, u1ss, u2ss];
+steadyStates = [x1ss, x2ss, u1ss, u2ss];
 disp(['Steady States = ', num2str(steadyStates)]);
 
 
 % Work with deviation variables
 x1data = x1_data -x1ss;
 x2data = x2_data -x2ss;
-x3data = x3_data -x3ss;
 u1data = u1_data -u1ss;
 u2data = u2_data -u2ss;
 

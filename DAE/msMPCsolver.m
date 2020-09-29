@@ -54,8 +54,8 @@ C = sys.C;
 
 
 %% Define Constraints
-y1Con = [42.5;30]-sys.steadyStates(1);
-y2Con = [10;0]-sys.steadyStates(2);
+y1Con = [42.5;25]-sys.steadyStates(1);
+y2Con = [80;20]-sys.steadyStates(2);
 Y = [eye(2), [y1Con(1);y2Con(1)]; -eye(2), [-y1Con(2); -y2Con(2)]];
 Y = Polyhedron('H', Y);
 U = [eye(2), [5;5]; -eye(2), [1.5; 1.5]];
@@ -153,7 +153,7 @@ w_i = (1/N_scenarios)*ones(N_scenarios,1);
 
 % Initialization
 % dhat = zeros(2,1);
-xki = [xd0(2)*300-273;xa0(1)]-sys.steadyStates(1:2)';
+xki = [xd0(2)*300-273;xd0(1)*300-273]-sys.steadyStates(1:2)';
 xhati = xki;
 
 
@@ -276,8 +276,8 @@ for n_sc =1:length(scenario_mat)
             covGP1 = KKss - (KKs'/KK)*KKs;
             wGP1 = (KKs'/KK)*Ytrain(:,1)+3*sqrt(covGP1);
             
-            %wGP2 = predict(gprMdl2, XtestPred); %Not needed since we only care about scenarios in x1
-            Wset = [-[wGP1;0], zeros(ny,1), [wGP1;0]];
+            wGP2 = (KKs'/KK)*Ytrain(:,2)+3*sqrt(covGP1); %Not needed since we only care about scenarios in x1
+            Wset = [-[wGP1;wGP2], zeros(ny,1), [wGP1;wGP2]];
             
             % Update bounds
             lbw = [lbw; Wset(1,w_idx(i));Wset(2,w_idx(i))];

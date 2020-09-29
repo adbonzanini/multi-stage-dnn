@@ -7,6 +7,10 @@
 % Written by: Angelo D. Bonzanini
 % Written: April 27 2020
 % Last edited: June 19 2020
+
+% Note to self: THIS IS THE MAIN FILE!!
+% steadystates is now a vector of 4 instead of 5 elements
+% we use xd(1) instead of xa(1)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % File located in /users/adbonzanini/Box\ Sync/Berkeley/Research/CACE2020/multi-stage-dnn/DAE
@@ -25,8 +29,9 @@ sys = load('Model_ID/APPJmodelDAE');
 load('Supporting-Data-Files/DNN_training.mat')
 
 %% User inputs
-caseidx = 2;    % 1 = nominal; 2 = multi-stage; 3 = adaptive multi-stage;
-sdNoise = 0.4;  % standard deviation of the random  noise (NOT due to mismatch)
+caseidx = 4;    % 1 = nominal; 2 = multi-stage; 3 = adaptive multi-stage; 4 = LB multi-stage
+sdNoise = 0.3;  % standard deviation of the random  noise (NOT due to mismatch)
+sdNoise2 = 0;
 CEMtarget = 10; % CEM target
 currentCEM = 0; % Initial CEM
 training = 0;   % Whether to train the GP model or not (has to be trained the first time you run the code)
@@ -34,14 +39,18 @@ GPinPredictionIdx = 0; % Whether GP is used in prediction or not
 Kcem = 0.5; 
 
 if caseidx==1
-    wb = 0; adaptTree=0;
+    wb = 0; adaptTree=0; 
+    wb2=0;
 elseif caseidx==2
-    wb = sys.maxErrors(1)+2*sdNoise; adaptTree=0;
+    wb = sys.maxErrors(1)+3*sdNoise; adaptTree=0; 
+    wb2 = 0*abs(sys.maxErrors(2))+3*sdNoise2;
 elseif caseidx==3
-    wb = sys.maxErrors(1)+2*sdNoise; adaptTree=1;
+    wb = sys.maxErrors(1)+3*sdNoise; adaptTree=1;
+    wb2 = 0*abs(sys.maxErrors(2))+3*sdNoise2;
 elseif caseidx == 4
-    wb = 0*sys.maxErrors(1)+2*sdNoise; adaptTree=0; % adaptTree = 0 so that extenal bounds are not introduced
-    GPinPredictionIdx = 2;
+    wb = 0*sys.maxErrors(1)+3*sdNoise; adaptTree=0; % adaptTree = 0 so that extenal bounds are not introduced
+    GPinPredictionIdx = 2; % equal to the robust horizon
+    wb2 = 0*abs(sys.maxErrors(2))+3*sdNoise2;
 else
     error('Invalid case study')
 end
@@ -80,10 +89,11 @@ if training == 1
     end
 
     % Initialize vectors to store the test data after each OCP solution
-    Xtest = Xtrain(1:400,:);
-    Xtrain = Xtrain(400:end, :);
-    Ytest = Ytrain(1:400,:);
-    Ytrain = Ytrain(400:end, :);
+    splitPt = 300;
+    Xtest = Xtrain(1:splitPt,:);
+    Xtrain = Xtrain(splitPt:end, :);
+    Ytest = Ytrain(1:splitPt,:);
+    Ytrain = Ytrain(splitPt:end, :);
     
     showTrainingPlots = 1;
     [gprMdl1, gprMdl2, kfcn] = trainGP(Xtrain, Ytrain, Xtest, Ytest, showTrainingPlots);
@@ -102,6 +112,7 @@ if training == 1
     GPtraining.Ytest = Ytest;
     GPtraining.lag = lag;
     save('GPtraining.mat', 'GPtraining')
+    return
 else
     load('GPtraining.mat')
     gprMdl1 = GPtraining.gprMdl1;
@@ -115,15 +126,15 @@ end
 
 
 %% Define MPC Parameters
-Np = 6;      % Prediction horizon (ensure it is the same as DNN)
-Nsim = 60;   % Simulation horizon
+Np = 5;      % Prediction horizon (ensure it is the same as DNN)
+Nsim = 120;   % Simulation horizon
 
 % Initial point
 yi = [-2;0];
 
 % Uncertainty bounds
-wl = -1*[wb;0];
-wu =  1*[wb;0];
+wl = -1*[wb;wb2];
+wu =  1*[wb;wb2];
 
 
 %% Setup the mpc problem
@@ -140,7 +151,7 @@ TimeVec = zeros(Nsim+1,1);
 
 % Calculate initial steady-state
 [xd0, xa0, d0, uss] = DAEssCalc(yi(1)+sys.steadyStates(1),4, 0);
-xki = [xd0(2)*300-273;xa0(1)]-sys.steadyStates(1:2)';
+xki = [xd0(2)*300-273;xd0(1)*300-273]-sys.steadyStates(1:2)';
 yplot(:,1) = xki;
 dataIn = [yplot(:,1)', CEMplot(1), wb, 0];
 
@@ -168,12 +179,12 @@ for k=1:Nsim
 
     xPred = A*xki+B*U_mpc'; % pass xPred
     
-    Fsim = plantSimulator(xd0, U_mpc'+sys.steadyStates(4:5)', d0, xa0);
+    Fsim = plantSimulator(xd0, U_mpc'+sys.steadyStates(3:4)', d0, xa0);
     xd0 = full(Fsim.xf);
     xa0 = full(Fsim.zf);
    
 
-    xki = [xd0(2)*300-273;xa0(1)]-sys.steadyStates(1:2)';
+    xki = [xd0(2)*300-273;xd0(1)*300-273]-sys.steadyStates(1:2)';
     % xki  = A*xki+B*U_mpc'+ GP; % Uncomment here
     %xki = A*xki+B*U_mpc';
     yki = xki+wReal(:,k);
@@ -203,8 +214,10 @@ for k=1:Nsim
     % Update wb through GP
     if adaptTree == 1
         wb(1) = abs(GP(1))+3*sdNoise;  
+        wb(2) = abs(GP(2))+3*sdNoise;
     else
         wb(1) = 0;
+        wb(2) = 0;
     end
   
     dataIn = [yki',currentCEM, wb, 0];
@@ -252,7 +265,7 @@ plot([0, Nsim]*0.5, [max(Y.V(:,2)), max(Y.V(:,2))]+sys.steadyStates(2), 'k--', '
 plot([0, Nsim]*0.5, [min(Y.V(:,2)), min(Y.V(:,2))]+sys.steadyStates(2), 'k--', 'Linewidth', Lwidth)
 ylim([min(Y.V(:,2))-0.5, max(Y.V(:,2))+0.5]+sys.steadyStates(2))
 xlabel('Time (s)')
-ylabel('I (mA)')
+ylabel('T_{g} (^\circC)')
 set(gca, 'Fontsize', Fontsize)
 
 subplot(3,1,1)

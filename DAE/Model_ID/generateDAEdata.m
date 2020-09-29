@@ -169,6 +169,7 @@ figure(2)
 subplot(2,1,1)
 hold on
 plot(xdVec(2,:)*300-273)
+plot(xdVec(1,:)*300-273)
 xlabel('Time step')
 ylabel('Temperature (^\circ C)')
 subplot(2,1,2)
@@ -176,6 +177,7 @@ hold on
 plot(xaVec(1,:))
 xlabel('Time step')
 ylabel('Current (mA)')
+
 
 if overwrite==1
     save('DAE_data', 'xdVec', 'xaVec', 'uSequence')

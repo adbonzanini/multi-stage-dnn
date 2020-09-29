@@ -16,18 +16,20 @@ uqlab
 Fontsize = 15;
 Lwidth = 2;
 color = {[0.6350, 0.0780, 0.1840], [0 0.4470 0.7410], [0.4940, 0.1840, 0.5560], [0.8500, 0.3250, 0.0980]}; %red, blue, purple, orange 
+warning('on','all')
+addpath('Model_ID')
 
 %% User inputs
-approximate=1;  % Use DNN or not
+approximate=0;  % Use DNN or not
 wb =  5;        % (Initial) uncertainty bound
-adaptTree = 1;  % Scenario tree adaptation
+adaptTree = 0;  % Scenario tree adaptation
 currentCEM = 0; % Initial CEM
 CEMtarget = 1;  % CEM target
 training = 0;   % Whether to train the GP model or not (has to be trained the first time you run the code)
 
 
 %% Load plasma model and training data
-sys = load('APPJmodelDAE');
+sys = load('Model_ID/APPJmodelDAE');
 DNNstruct = load('Supporting-Data-Files/DNN_training.mat');
 load('Supporting-Data-Files/DNN_training.mat')
 % Run casadi function for faster DNN evaluation
@@ -69,27 +71,37 @@ if training == 1
     % Initialize vectors to store the test data after each OCP solution
     Xtest = zeros(1, size(Xtrain,2));
     Ytest = zeros(1, size(Ytrain,2));
+    
+%     % for testing
+%     Xtest = Xtrain(end*0.8:end,:);
+%     Ytest = Ytrain(end*0.8:end,:);
+%     Xtrain = Xtrain(1:end*0.8,:);
+%     Ytrain = Ytrain(1:end*0.8,:);
 
-    myKrigingMat = trainGP(Xtrain, Ytrain, Xtest, Ytest, 0);
+    [gprMdl1, gprMdl2, kfcn] = trainGP(Xtrain, Ytrain, Xtest, Ytest, 0);
     
     % Create GP training object
-    GPtraining.myKrigingMat = myKrigingMat;
+    GPtraining.gprMdl1 = gprMdl1;
+    GPtraining.gprMdl2 = gprMdl2;
+    GPtraining.kfcn = kfcn;
     GPtraining.Xtrain = Xtrain;
     GPtraining.Ytrain = Ytrain;
     GPtraining.Xtest = Xtest;
     GPtraining.Ytest = Ytest;
     GPtraining.lag = lag;
     save('GPtraining.mat', 'GPtraining')
+    warning('GP training overwritten!')
 else
     load('GPtraining.mat')
-    myKrigingMat = GPtraining.myKrigingMat;
+    gprMdl1 = GPtraining.gprMdl1;
+    gprMdl2 = GPtraining.gprMdl2;
+    kfcn = GPtraining.kfcn;
     Xtrain = GPtraining.Xtrain;
     Ytrain = GPtraining.Ytrain;
     Xtest = GPtraining.Xtest;
     Ytest=GPtraining.Ytest;
     lag = GPtraining.lag;
 end
-
 
 
 %% Define MPC Parameters
@@ -106,7 +118,7 @@ wu =  1*[wb;0];
 
 
 %% Setup the mpc problem
-[solver, args, Y, U] = msMPCsolver(yi, sys, currentCEM, CEMtarget, wl, wu, Np, eye(nx), eye(nu), eye(nx), GPtraining);
+[solver, args, Y, U] = msMPCsolver(yi, sys, currentCEM, CEMtarget, wl, wu, Np, eye(nx), eye(nu), eye(nx), GPtraining, Kcem, GPinPredictionIdx);
 
 
 %% Initialize empty vectors
@@ -117,7 +129,7 @@ uopt = zeros(nu, Np);
 
 % Calculate initial steady-state
 [xd0, xa0, d0, uss] = DAEssCalc(yi(1)+sys.steadyStates(1),4, 0);
-xki = [xd0(2)*300-273;xa0(1)]-sys.steadyStates(1:2)';
+xki = [xd0(2)*300-273;xd0(1)*300-273]-sys.steadyStates(1:2)';
 yplot(:,1) = xki;
 dataIn = [yplot(:,1)', CEMplot(1), wb, 0];
 
@@ -132,7 +144,7 @@ for k=1:Nsim
     
     xPred = A*xki+B*U_mpc';
     
-    Fsim = plantSimulator(xd0, U_mpc'+sys.steadyStates(4:5)', d0, xa0);
+    Fsim = plantSimulator(xd0, U_mpc'+sys.steadyStates(3:4)', d0, xa0);
     xd0 = full(Fsim.xf);
     xa0 = full(Fsim.zf);
    
@@ -151,7 +163,8 @@ for k=1:Nsim
     Xtest(1,1:end-ny) = Xtest(1,ny+1:end);
     Xtest(1,end-ny+1:end) = (xPred - xki)';
     Xtest(1,(lag-1)*nu+1:lag*nu) = uopt(:,1)';
-    [GP,~] = uq_evalModel(myKrigingMat,Xtest);
+%     [GP,~] = uq_evalModel(myKrigingMat,Xtest);
+    [GP, ~] = predict(gprMdl1, Xtest);
     
     % Update wb through GP
     if adaptTree == 1

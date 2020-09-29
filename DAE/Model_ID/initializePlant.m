@@ -40,20 +40,20 @@ q = u(2);
 dsep = p(1)*1.00e-3;
 
 %% Differential states
-T1 = xd(1)*300;
-w1 = 1.0;  % ?? what is w1?
+T1 = xd(1)*300; % Gas plume temperature adjacent to the substrate
+w1 = 1.0;  %
 Ts_max = xd(2)*300;
 intErr = xd(3);
 
 %% Algebraic states
-ip = xa(1)*1e-3;     % current in amps
+ip = xa(1)*1e-3;     % current in amps  % We convert this to a differential state to learn the GP model
 P = xa(2);           % power in W
 Rp = xa(3)*1e5;      % plasma resistivity in Ohm
 Tin = xa(4)*300;     % peak gas temeprature in K
 Va = xa(5)*1e3;      % applied voltage in V
 
 %% Offset-free constant disturbances
-v1 = xd(4); %?? what is v1?
+v1 = xd(4);
 
 %% Velocity form of PI
 Kp = 0.268; %W/kV
